@@ -3,7 +3,9 @@ import { MboxStream } from "node-mbox";
 import { AddressObject, simpleParser, Source } from "mailparser";
 import {
   bufferCount,
+  catchError,
   concatMap,
+  EMPTY,
   finalize,
   from,
   map,
@@ -69,6 +71,10 @@ const extractEmails = async (mboxFilePath) => {
               })),
             };
           }),
+          catchError((e) => {
+            console.error("ERROR READING THE MESSAGE", e);
+            return EMPTY;
+          }),
           tap(() => {
             processNumber++;
             console.log(`We have read: ${processNumber} mails...`);
@@ -104,10 +110,14 @@ const extractEmails = async (mboxFilePath) => {
       console.log(`Writing attachments...`);
       const allAttachments = messages.map((msg) => msg.attachments).flat();
       for (const attachment of allAttachments) {
-        fs.writeFileSync(
-          `${attachmentDir}/${attachment.filename ?? generateRandomName()}`,
-          attachment.content
-        );
+        try {
+          fs.writeFileSync(
+            `${attachmentDir}/${attachment.filename ?? generateRandomName()}`,
+            attachment.content
+          );
+        } catch (e) {
+          console.error("ERROR DOWNLOADING THE ATTACHMENT", e);
+        }
       }
     });
 
